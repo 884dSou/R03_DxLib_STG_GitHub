@@ -15,7 +15,7 @@
 
 #define GAME_WINDOW_BAR		0
 
-#define Game_DEBUG FALSE
+#define Game_DEBUG TRUE
 
 //—ñ‹“Œ^
 enum GAME_SCEAEN {
