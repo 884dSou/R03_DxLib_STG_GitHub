@@ -6,6 +6,7 @@
 
 //マクロ定義
 #define TAMA_DIV_MAX	4
+#define TAMA_MAX	15
 
 //構造体
 
@@ -52,6 +53,31 @@ struct AUDIO
 	int playType = -1;
 };
 
+struct TAMA {
+	int handle[TAMA_DIV_MAX];		//画像ハンドル
+	char path[255];		//画像のパス
+
+	int DivTate;		//分割数（縦）
+	int DivYoko;		//分割数（横）
+	int DivMax;			//分割総数
+
+	int AnimeCnt = 0;		//アニメーションカウンタ
+	int AnimeCntMAX = 0;	//アニメーションカウンタMAX
+
+	int NowIndex = 0;		//現在の画像の要素数
+
+	int x ;			//X位置
+	int y ;			//Y位置
+	int width ;		//高さ
+	int height;		//幅
+
+	int speed;
+
+	RECT coll;		//当たり判定
+
+	BOOL IsDraw = FALSE;		//描画できる？
+};
+
 //シーンを管理する変数
 GAME_SCEAEN GameScene;				//現在のゲームシーン
 GAME_SCEAEN OldGameScene;			//前回のゲームシーン
@@ -75,11 +101,9 @@ int fadeInCntInit = fadeTimeMax;	//初期値
 int fadeInCnt = fadeInCntInit;		//フェードインのカウンタ
 int fadeInCntMax = 0;				//フェードインのカウンタMAX
 
-//弾の画像のハンドル
-int Tama[TAMA_DIV_MAX];		//球の画像の最大数
-int TamaIndex = 0;			//画像の添字
-int TamaChangeCnt = 0;		//画像を変えるタイミング
-int TamaChangeCntMax = 25;	//画像を変えるタイミングMAX
+//弾の構造体
+struct TAMA tama_moto;		//元
+struct TAMA tama[TAMA_MAX];	//実際に使う数
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -103,6 +127,8 @@ VOID ChangeScene(GAME_SCEAEN scene);	//シーン切り替え
 VOID CollUpdatePlayer(CHARCTOR* chara);	//当たり判定の領域を更新
 VOID CollUpdate(CHARCTOR* chara);	//当たり判定
 
+VOID TamaCollUpdate(TAMA* tama);	//弾の当たり判定
+
 BOOL OnCollrect(RECT a, RECT b);	//矩形と矩形の当たり判定
 
 BOOL GameLoad(VOID);	//ゲームデータの読み込み
@@ -112,6 +138,8 @@ BOOL LoadAudio(AUDIO* audio, const char* path, int volume, int playType);	//音楽
 BOOL LoadImg(IMAGE* img, const char* path);	//画像の読み込み
 
 BOOL LoadImageDivMem(int* handle, const char* path, int divyoko, int divtate);	//画像を分割して読み込み
+
+VOID DrawTama(TAMA* tama);		//弾の描画
 
 //プログラムはWinMainから始まります
 //Windowsのプログラミング方法＝（WinAPI）で動いている
@@ -226,7 +254,7 @@ int WINAPI WinMain(
 	}
 
 	//読み込んだ画像を開放
-	for (int i = 0; i < TAMA_DIV_MAX; i++) { DeleteGraph(Tama[i]); }
+	for (int i = 0; i < TAMA_DIV_MAX; i++) { DeleteGraph(tama_moto.handle[i]); }
 
 	//DxLib使用の終了処理
 	DxLib_End();
@@ -240,8 +268,32 @@ int WINAPI WinMain(
 /// <returns>読み込めたらTRUE/読み込めなかったらFALSE</returns>
 BOOL GameLoad()
 {
+	//弾の分割数を設定
+	tama_moto.x = 4;
+	tama_moto.y = 1;
+
+	//弾のパスをコピー
+	strcpyDx(tama_moto.path, ".\\image\\Tama.png");
+
 	//画像を分割して読み込み
-	if (LoadImageDivMem(&Tama[0], ".\\image\\Tama.png", 4, 1) == FALSE) { return FALSE; }
+	if (LoadImageDivMem(&tama_moto.handle[0], tama_moto.path, tama_moto.x, tama_moto.y) == FALSE) { return FALSE; }
+
+	//位置を設定
+	tama_moto.x = GAME_WIDTH / 2 + tama_moto.width / 2;
+	tama_moto.y = GAME_HEIGHT / 2 + tama_moto.height / 2;
+
+	tama_moto.speed = 10;		//速度
+
+	//当たり判定の更新
+	TamaCollUpdate(&tama_moto);
+
+	//画像を表示しない
+	tama_moto.IsDraw = FALSE;
+
+	for (int i = 0; i < TAMA_MAX; i++)
+	{
+		tama[i] = tama_moto;
+	}
 
 	return TRUE;
 }
@@ -300,28 +352,7 @@ VOID TitleProc(VOID)
 /// </summary>
 VOID TitleDraw(VOID)
 {
-	//弾の描画
-	DrawGraph(0, 0, Tama[TamaIndex], TRUE);
-
-	if (TamaChangeCnt < TamaChangeCntMax - 1)
-	{
-		TamaChangeCnt++;
-	}
-	else 
-	{
-		//弾の添え字が弾の分割数の最大よりも小さいとき
-		if (TamaIndex < TAMA_DIV_MAX - 1)
-		{
-			TamaIndex++;
-		}
-		else
-		{
-			TamaIndex = 0;
-		}
-
-		TamaChangeCnt = 0;
-	}
-	
+	DrawTama(&tama[0]);
 
 	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
 	return;
@@ -526,6 +557,20 @@ VOID CollUpdate(CHARCTOR* chara)
 }
 
 /// <summary>
+/// 弾の当たり判定の領域更新
+/// </summary>
+/// <param name="chara">弾の当たり判定の領域</param>
+VOID TamaCollUpdate(TAMA* tama)
+{
+	tama->coll.left = tama->x;
+	tama->coll.top = tama->y;
+	tama->coll.right = tama->x + tama->width;
+	tama->coll.bottom = tama->y + tama->height;
+
+	return;
+}
+
+/// <summary>
 /// オブジェクトの衝突の確認
 /// </summary>
 /// <param name="a">当たり判定の領域（a）</param>
@@ -672,4 +717,35 @@ BOOL LoadImg(IMAGE* img,const char* path)
 	GetGraphSize(img->handle, &img->width, &img->height);
 
 	return TRUE;
+}
+
+
+/// <summary>
+/// 弾の描画
+/// </summary>
+/// <param name="tama">弾の構造体</param>
+/// <returns></returns>
+VOID DrawTama(TAMA* tama)
+{
+	//弾の描画
+	DrawGraph(tama->x, tama->y, tama->handle[tama->NowIndex], TRUE);
+
+	if (tama->AnimeCnt < tama->AnimeCntMAX - 1)
+	{
+		tama->AnimeCnt++;
+	}
+	else
+	{
+		//弾の添え字が弾の分割数の最大よりも小さいとき
+		if (tama->NowIndex < TAMA_DIV_MAX - 1)
+		{
+			tama->NowIndex++;
+		}
+		else
+		{
+			tama->NowIndex = 0;
+		}
+
+		tama->AnimeCnt = 0;
+	}
 }
