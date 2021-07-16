@@ -121,7 +121,7 @@ void DrawRect(RECT r, unsigned int color, bool b)
 /// <param name="color">•`‰æ‚·‚éF</param>
 /// <param name="b">’†‚ğ“h‚è‚Â‚Ô‚³‚È‚¢‚È‚çuFALSEv^“h‚è‚Â‚Ô‚·‚È‚çuTRUEv</param>
 /// <param name="thick">ü‚Ì‘¾‚³</param>
-VOID DrawMaru(MARU c, unsigned int color, bool b, int thick = 1)
+VOID DrawMaru(MARU c, unsigned int color, bool b, int thick)
 {
 	//ˆø”‚ğ‚à‚Æ‚É•`‰æ
 	DrawCircle(c.center.x, c.center.y, c.radius, color, b, thick);
