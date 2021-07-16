@@ -663,7 +663,7 @@ VOID PlayProc(VOID)
 				}
 				else if (Score < 2000)
 				{
-					enemy[i] = enemy_moto[0];
+					enemy[i] = enemy_moto[1];
 				}
 				else
 				{

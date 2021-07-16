@@ -33,4 +33,6 @@ extern BOOL MouseUp(int MOUSE_INPUT_);
 extern BOOL MouseDownKeep(int MOUSE_INPUT_, int milliTime);
 extern BOOL MouseClick(int MOUSE_INPUT);
 extern VOID MouseDraw(VOID);
+
+extern BOOL MouseRectClick(RECT rect, int MOUSE_INPUT_);
 extern BOOL MouseMaruClick(MARU rect, int MOUSE_INPUT_);
